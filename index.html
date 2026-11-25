@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>飯糰碳足跡辨識</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Noto Sans TC", "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 16px;
+      background: #f0f4f1;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    h2 {
+      margin: 4px 0 14px;
+      font-size: 1.45rem;
+      color: #14532d;
+      letter-spacing: 0.02em;
+    }
+
+    /* 鏡頭畫面與浮動 HUD 容器 */
+    .camera-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #0f172a;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+      min-height: 240px;
+    }
+
+    #canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #0f172a;
+    }
+
+    /* 掃描到 ArUco 時於畫面中顯示的顯眼總碳足跡當量 HUD */
+    #carbonOverlay {
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%) translateY(16px) scale(0.95);
+      width: calc(100% - 28px);
+      max-width: 460px;
+      padding: 14px 18px;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 2.5px solid #4ade80;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(74, 222, 128, 0.35);
+      color: #ffffff;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+      z-index: 10;
+    }
+
+    #carbonOverlay.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+
+    .overlay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #bbf7d0;
+    }
+
+    .overlay-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: rgba(74, 222, 128, 0.22);
+      border: 1px solid rgba(74, 222, 128, 0.5);
+      color: #86efac;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    .overlay-value-row {
+      display: flex;
+      justify-content: center;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+      line-height: 1.1;
+    }
+
+    .overlay-number {
+      font-size: clamp(2rem, 7vw, 2.8rem);
+      font-weight: 800;
+      color: #fde047;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 10px rgba(253, 224, 71, 0.35);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .overlay-unit {
+      font-size: clamp(1rem, 3.2vw, 1.25rem);
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .overlay-sub {
+      margin-top: 6px;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+    }
+
+    #result {
+      max-width: 640px;
+      margin: 16px auto 0;
+      padding: 16px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      text-align: left;
+    }
+
+    .result-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .result-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .total {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #15803d;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .food-list {
+      list-style: none;
+      margin: 12px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .food-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .food-item-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .food-item-name {
+      font-weight: 700;
+      color: #111827;
+      font-size: 0.96rem;
+    }
+
+    .food-item-meta {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .food-item-carbon {
+      font-weight: 700;
+      color: #15803d;
+      white-space: nowrap;
+      font-size: 0.95rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .empty-state {
+      margin: 12px 0 0;
+      padding: 12px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 0.92rem;
+      background: #f9fafb;
+      border-radius: 8px;
+    }
+
+    .unknown-note {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: #b45309;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    .status-bar {
+      max-width: 640px;
+      margin: 10px auto 0;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+  </style>
+  <!-- 載入自託管 js-aruco2 核心函式庫 -->
+  <script src="./lib/cv.js"></script>
+  <script src="./lib/aruco.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <h2>飯糰碳足跡辨識系統</h2>
+
+    <!-- 隱藏原始 video，統一畫在 canvas 上方便繪製辨識框 -->
+    <video id="video" autoplay playsinline muted style="display:none;"></video>
+
+    <div class="camera-wrapper">
+      <canvas id="canvas"></canvas>
+
+      <!-- 掃描到任何 ArUco 時，於畫面中顯示的顯眼總碳足跡當量 -->
+      <div id="carbonOverlay" aria-live="polite">
+        <div class="overlay-header">
+          <span>總碳足跡當量</span>
+          <span class="overlay-badge" id="overlayCount">已掃描 0 張</span>
+        </div>
+        <div class="overlay-value-row">
+          <span class="overlay-number" id="overlayTotal">0.00</span>
+          <span class="overlay-unit">mg CO₂e</span>
+        </div>
+        <div class="overlay-sub" id="overlaySub"></div>
+      </div>
+    </div>
+
+    <div id="result">
+      <div class="result-summary">
+        <span class="result-title" id="resultTitle">目前偵測到的食材</span>
+        <div class="total">總碳足跡：<span id="totalCarbon">0.00</span> mg CO₂e</div>
+      </div>
+      <div id="foodListContainer">
+        <p class="empty-state">尚未偵測到圖卡，請將鏡頭對準食材圖卡</p>
+      </div>
+    </div>
+
+    <div class="status-bar" id="dataStatus">正在載入食材碳足跡資料...</div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    const carbonOverlayEl = document.getElementById('carbonOverlay');
+    const overlayCountEl = document.getElementById('overlayCount');
+    const overlayTotalEl = document.getElementById('overlayTotal');
+    const overlaySubEl = document.getElementById('overlaySub');
+
+    const resultTitleEl = document.getElementById('resultTitle');
+    const totalCarbonEl = document.getElementById('totalCarbon');
+    const foodListContainerEl = document.getElementById('foodListContainer');
+    const dataStatusEl = document.getElementById('dataStatus');
+
+    // 與 CO2e.json 同步的備用資料（當以 file:// 直接開啟導致 fetch 受 CORS 限制時啟用）
+    const FALLBACK_FOOD_DATABASE = {
+      "1": { "foodId": "FM001", "name": "米(後壁仕安-主婦聯盟)", "weight_g": 15, "carbon_mg": 616.35 },
+      "2": { "foodId": "FM002", "name": "米(西螺-三好米)", "weight_g": 15, "carbon_mg": 267.24 },
+      "3": { "foodId": "FM003", "name": "牛蒡香鬆(將軍農會)", "weight_g": 0.5, "carbon_mg": 12.327 },
+      "4": { "foodId": "FM004", "name": "牛蒡香鬆(台南農會)", "weight_g": 0.5, "carbon_mg": 14.3815 },
+      "5": { "foodId": "FM005", "name": "鮪魚罐頭", "weight_g": 1, "carbon_mg": 70.5056 },
+      "6": { "foodId": "FM006", "name": "玉米罐頭", "weight_g": 1, "carbon_mg": 239.0234 },
+      "7": { "foodId": "FM007", "name": "鮭魚鬆", "weight_g": 0.5, "carbon_mg": 39.135 },
+      "8": { "foodId": "FM008", "name": "肉鬆(新東陽)", "weight_g": 0.5, "carbon_mg": 8.218 },
+      "9": { "foodId": "FM009", "name": "雞肉丁", "weight_g": 2, "carbon_mg": 12.838 },
+      "10": { "foodId": "FM010", "name": "毛豆(新市)", "weight_g": 1, "carbon_mg": 2.751 },
+      "11": { "foodId": "FM011", "name": "毛豆(高雄)", "weight_g": 1, "carbon_mg": 28.763 },
+      "12": { "foodId": "FM012", "name": "炒蛋(卜蜂)", "weight_g": 1, "carbon_mg": 6.419 },
+      "13": { "foodId": "FM013", "name": "滷蛋(東菜市場)", "weight_g": 1, "carbon_mg": 10.566 },
+      "14": { "foodId": "FM014", "name": "海苔(日本)", "weight_g": 0.01, "carbon_mg": 25.82001 },
+      "15": { "foodId": "FM015", "name": "海苔(韓國)", "weight_g": 0.01, "carbon_mg": 0.76983 }
+    };
+
+    let foodDatabase = { ...FALLBACK_FOOD_DATABASE };
+
+    // 靜止時的單卡防閃爍保留時間（毫秒）；一旦鏡頭移動或圖卡原位置畫面改變會立即清除，避免 01->02 殘影相加
+    const STATIC_HOLD_MS = 450;
+    const GLOBAL_MOTION_THRESHOLD = 12; // 全畫面平均亮度變化門檻（0~255）
+    const LOCAL_PATCH_THRESHOLD = 18;   // 圖卡原位置 4x4 區域亮度變化門檻（0~255）
+
+    const trackedMarkers = new Map(); // markerId -> { marker, lastSeen, patchSamples }
+    let prevGlobalSamples = null;
+    let lastRenderedSignature = null;
+    let isLoopRunning = false;
+
+    // 同幀多尺度自適應二值化補充參數（共用同一份灰階圖 detector.grey，單幀內一次抓齊）
+    // Pass 1 由原生 detector.detect() 執行 (2, 7)，接著在同一幀內補跑以下兩組尺度
+    const EXTRA_THRESHOLD_PASSES = [
+      { kernelSize: 6, threshold: 8 }, // 較大視窗：適合近拍、黑框較粗或輕微反光的圖卡
+      { kernelSize: 3, threshold: 3 }  // 低門檻：適合偏暗或低對比區域
+    ];
+
+    // 1. 讀取外部 CO2e.json
+    async function loadFoodDatabase() {
+      try {
+        const response = await fetch('./CO2e.json', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        foodDatabase = data;
+        const count = Object.keys(foodDatabase).length;
+        dataStatusEl.textContent = `已載入 CO2e.json（共 ${count} 項食材資料）`;
+      } catch (err) {
+        console.warn('無法直接 fetch CO2e.json，改用內建同步資料：', err);
+        const count = Object.keys(foodDatabase).length;
+        dataStatusEl.textContent = `使用內建同步資料（共 ${count} 項食材；建議透過本機伺服器開啟以即時讀取 CO2e.json）`;
+      }
+    }
+
+    // 2. 初始化 ArUco 偵測器 (ARUCO_MIP_36h12 字典，共 36 bits、最小漢明距離 tau=12)
+    // 理論安全容錯上限為 floor((12-1)/2)=5，搭配 CO2e.json 白名單過濾，可兼顧穩定辨識與低誤判
+    const detector = new AR.Detector({
+      dictionaryName: 'ARUCO_MIP_36h12',
+      maxHammingDistance: 5
+    });
+
+    // 在同一幀內完成多尺度偵測（共用同一份灰階圖，不依賴跨幀輪巡）
+    function detectMultiScaleInFrame(imageData) {
+      const bestById = new Map();
+
+      const mergeMarkers = (list) => {
+        list.forEach(marker => {
+          if (!foodDatabase[String(marker.id)]) return;
+          const existing = bestById.get(marker.id);
+          const currDist = typeof marker.hammingDistance === 'number' ? marker.hammingDistance : 99;
+          const prevDist = existing && typeof existing.hammingDistance === 'number' ? existing.hammingDistance : 99;
+          if (!existing || currDist < prevDist) {
+            bestById.set(marker.id, marker);
+          }
+        });
+      };
+
+      // Pass 1：執行原生 detect（同步建立灰階圖 detector.grey 並跑預設 (2, 7)）
+      mergeMarkers(detector.detect(imageData));
+
+      // Pass 2+：直接共用 detector.grey 補跑其他視窗尺度
+      const canCustomThreshold =
+        typeof CV !== 'undefined' &&
+        typeof CV.adaptiveThreshold === 'function' &&
+        typeof CV.findContours === 'function' &&
+        detector.grey &&
+        detector.grey.data &&
+        detector.thres &&
+        detector.binary &&
+        typeof detector.findCandidates === 'function' &&
+        typeof detector.clockwiseCorners === 'function' &&
+        typeof detector.notTooNear === 'function' &&
+        typeof detector.findMarkers === 'function';
+
+      if (canCustomThreshold) {
+        for (const pass of EXTRA_THRESHOLD_PASSES) {
+          try {
+            CV.adaptiveThreshold(detector.grey, detector.thres, pass.kernelSize, pass.threshold);
+            detector.contours = CV.findContours(detector.thres, detector.binary);
+            let candidates = detector.findCandidates(detector.contours, imageData.width * 0.01, 0.05, 10);
+            candidates = detector.clockwiseCorners(candidates);
+            candidates = detector.notTooNear(candidates, 10);
+            detector.candidates = candidates;
+            mergeMarkers(detector.findMarkers(detector.grey, candidates, 49));
+          } catch (err) {
+            break;
+          }
+        }
+      }
+
+      return Array.from(bestById.values());
+    }
+
+    // 全畫面均勻取樣（16x12 = 192 點），偵測鏡頭是否在移動
+    function sampleGlobalGrey(grey) {
+      if (!grey || !grey.data || !grey.width || !grey.height) return null;
+      const cols = 16;
+      const rows = 12;
+      const samples = new Uint8Array(cols * rows);
+      const w = grey.width;
+      const h = grey.height;
+      const data = grey.data;
+      let idx = 0;
+      for (let r = 0; r < rows; r++) {
+        const y = Math.floor(((r + 0.5) / rows) * h);
+        const rowOffset = y * w;
+        for (let c = 0; c < cols; c++) {
+          const x = Math.floor(((c + 0.5) / cols) * w);
+          samples[idx++] = data[rowOffset + x];
+        }
+      }
+      return samples;
+    }
+
+    // 單一圖卡區域 4x4 亮度取樣，用來確認該圖卡是否仍停留在原位置
+    function sampleMarkerPatch(grey, corners) {
+      if (!grey || !grey.data || !grey.width || !grey.height || !corners || corners.length === 0) {
+        return null;
+      }
+      const w = grey.width;
+      const h = grey.height;
+      const data = grey.data;
+      let minX = w - 1, maxX = 0, minY = h - 1, maxY = 0;
+      for (let i = 0; i < corners.length; i++) {
+        if (corners[i].x < minX) minX = corners[i].x;
+        if (corners[i].x > maxX) maxX = corners[i].x;
+        if (corners[i].y < minY) minY = corners[i].y;
+        if (corners[i].y > maxY) maxY = corners[i].y;
+      }
+      minX = Math.max(0, Math.min(w - 1, minX));
+      maxX = Math.max(0, Math.min(w - 1, maxX));
+      minY = Math.max(0, Math.min(h - 1, minY));
+      maxY = Math.max(0, Math.min(h - 1, maxY));
+
+      const grid = 4;
+      const samples = new Uint8Array(grid * grid);
+      const spanX = maxX - minX;
+      const spanY = maxY - minY;
+      let idx = 0;
+      for (let r = 0; r < grid; r++) {
+        const y = Math.max(0, Math.min(h - 1, Math.round(minY + ((r + 0.5) / grid) * spanY)));
+        const rowOffset = y * w;
+        for (let c = 0; c < grid; c++) {
+          const x = Math.max(0, Math.min(w - 1, Math.round(minX + ((c + 0.5) / grid) * spanX)));
+          samples[idx++] = data[rowOffset + x];
+        }
+      }
+      return samples;
+    }
+
+    function calcMeanAbsDiff(a, b) {
+      if (!a || !b || a.length !== b.length || a.length === 0) return Infinity;
+      let sum = 0;
+      for (let i = 0; i < a.length; i++) {
+        sum += Math.abs(a[i] - b[i]);
+      }
+      return sum / a.length;
+    }
+
+    // 數值格式化工具
+    function formatCarbon(mg) {
+      return Number(mg).toLocaleString('zh-TW', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function formatWeight(g) {
+      return Number(Number(g).toFixed(2)).toString();
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // 同步 canvas 像素尺寸與實際 video 串流寬高（解決手機直橫向旋轉時畫面被拉伸變形）
+    function syncCanvasSize() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) return false;
+
+      if (canvas.width !== vw || canvas.height !== vh) {
+        canvas.width = vw;
+        canvas.height = vh;
+        canvas.style.aspectRatio = `${vw} / ${vh}`;
+
+        // 方向或解析度改變時，重置偵測器內部影像緩衝與追蹤座標，避免殘留舊方向資料
+        if (typeof CV !== 'undefined' && typeof CV.Image === 'function') {
+          detector.grey = new CV.Image();
+          detector.thres = new CV.Image();
+          detector.binary = [];
+        }
+        prevGlobalSamples = null;
+        trackedMarkers.clear();
+      }
+      return true;
+    }
+
+    // 3. 啟動手機後置鏡頭（優先請求 720p 以兼顧清晰度與辨識速度）
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        video.srcObject = stream;
+
+        const startLoopIfNeeded = () => {
+          syncCanvasSize();
+          if (!isLoopRunning) {
+            isLoopRunning = true;
+            requestAnimationFrame(tick);
+          }
+        };
+
+        video.addEventListener('loadedmetadata', startLoopIfNeeded);
+        video.addEventListener('resize', syncCanvasSize);
+        window.addEventListener('orientationchange', () => {
+          setTimeout(syncCanvasSize, 150);
+        });
+      } catch (err) {
+        alert("無法開啟鏡頭，請確認是否使用 HTTPS 並授予相機權限：" + err.message);
+      }
+    }
+
+    // 4. 逐幀擷取畫面：自動同步直橫向尺寸 + 同幀多尺度辨識 + 鏡頭/局部移動偵測
+    function tick() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA && syncCanvasSize()) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const currentMarkers = detectMultiScaleInFrame(imageData);
+        const now = performance.now();
+        const grey = detector.grey;
+
+        // 偵測整體畫面是否移動
+        const currGlobalSamples = sampleGlobalGrey(grey);
+        const globalDiff = calcMeanAbsDiff(currGlobalSamples, prevGlobalSamples);
+        prevGlobalSamples = currGlobalSamples;
+        const isCameraMoving = Number.isFinite(globalDiff) && globalDiff > GLOBAL_MOTION_THRESHOLD;
+
+        // 更新本幀實際偵測到的有效圖卡及其局部影像特徵
+        const seenThisFrame = new Set();
+        currentMarkers.forEach(marker => {
+          seenThisFrame.add(marker.id);
+          trackedMarkers.set(marker.id, {
+            marker,
+            lastSeen: now,
+            patchSamples: sampleMarkerPatch(grey, marker.corners)
+          });
+        });
+
+        // 未出現在本幀的舊圖卡：
+        // 鏡頭移動中、圖卡原位置影像已改變（如抽走換卡）、或超過靜止保留時間 -> 立即清除
+        for (const [id, entry] of trackedMarkers.entries()) {
+          if (seenThisFrame.has(id)) continue;
+
+          const expired = now - entry.lastSeen > STATIC_HOLD_MS;
+          const currPatch = sampleMarkerPatch(grey, entry.marker.corners);
+          const localDiff = calcMeanAbsDiff(currPatch, entry.patchSamples);
+          const patchChanged = localDiff > LOCAL_PATCH_THRESHOLD;
+
+          if (isCameraMoving || expired || patchChanged) {
+            trackedMarkers.delete(id);
+          }
+        }
+
+        const activeMarkers = Array.from(trackedMarkers.values()).map(entry => entry.marker);
+        drawMarkers(activeMarkers);
+        updateCarbonResult(activeMarkers);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // 5. 在畫面上畫出辨識框與高對比標籤
+    function drawMarkers(markers) {
+      markers.forEach(marker => {
+        const corners = marker.corners;
+        const food = foodDatabase[String(marker.id)];
+
+        // 繪製外框
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = food ? "#22c55e" : "#f59e0b";
+        ctx.beginPath();
+        corners.forEach((c, idx) => {
+          if (idx === 0) ctx.moveTo(c.x, c.y);
+          else ctx.lineTo(c.x, c.y);
+        });
+        ctx.closePath();
+        ctx.stroke();
+
+        // 標籤內容：名稱 + 碳足跡 + 編號
+        const label = food
+          ? `${food.name} (CO2e: ${formatCarbon(food.carbon_mg)} mg)`
+
+          //  ? `#${marker.id} ${food.name} (${formatCarbon(food.carbon_mg)} mg)`
+          : `未知圖卡 (#${marker.id})`;
+
+        const fontSize = Math.max(16, Math.round(Math.min(canvas.width, canvas.height) * 0.032));
+        ctx.font = `bold ${fontSize}px "Noto Sans TC", sans-serif`;
+        const textWidth = ctx.measureText(label).width;
+        const padX = 8;
+        const padY = 5;
+        const boxW = textWidth + padX * 2;
+        const boxH = fontSize + padY * 2;
+
+        // 以圖卡最上方頂點為基準並限制在畫面邊界內
+        const minX = Math.min(...corners.map(c => c.x));
+        const minY = Math.min(...corners.map(c => c.y));
+        const boxX = Math.max(4, Math.min(minX, canvas.width - boxW - 4));
+        const boxY = Math.max(4, minY - boxH - 6);
+
+        ctx.fillStyle = food ? "rgba(20, 83, 45, 0.88)" : "rgba(180, 83, 9, 0.88)";
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.textBaseline = "top";
+        ctx.fillText(label, boxX + padX, boxY + padY);
+      });
+    }
+
+    // 6. 計算總碳足跡並更新畫面中顯眼 HUD 與下方明細
+    function updateCarbonResult(markers) {
+      // 使用 Set 避免同一張圖卡被重複計算
+      const detectedIds = [...new Set(markers.map(m => m.id))].sort((a, b) => a - b);
+
+      if (detectedIds.length === 0) {
+        if (lastRenderedSignature === '') {
+          return;
+        }
+        lastRenderedSignature = '';
+
+        carbonOverlayEl.classList.remove('is-visible');
+        resultTitleEl.textContent = '目前偵測到的食材';
+        totalCarbonEl.textContent = '0.00';
+        foodListContainerEl.innerHTML =
+          '<p class="empty-state">尚未偵測到圖卡，請將鏡頭對準食材圖卡</p>';
+        return;
+      }
+
+      const signature = detectedIds.join(',');
+      if (signature === lastRenderedSignature) {
+        return;
+      }
+      lastRenderedSignature = signature;
+
+      const validItems = detectedIds
+        .map(id => {
+          const food = foodDatabase[String(id)];
+          return food ? { markerId: id, ...food } : null;
+        })
+        .filter(Boolean);
+
+      const totalCarbonMg = validItems.reduce((sum, item) => sum + Number(item.carbon_mg || 0), 0);
+      const totalWeightG = validItems.reduce((sum, item) => sum + Number(item.weight_g || 0), 0);
+      const formattedTotal = formatCarbon(totalCarbonMg);
+
+      // 更新畫面中的顯眼總碳足跡當量 HUD
+      carbonOverlayEl.classList.add('is-visible');
+      overlayTotalEl.textContent = formattedTotal;
+      overlayCountEl.textContent = `已掃描 ${validItems.length} 項食材`;
+      const gramsEquiv = totalCarbonMg >= 1000
+        ? `（約 ${(totalCarbonMg / 1000).toFixed(3)} g CO₂e）`
+        : '';
+      overlaySubEl.textContent = `總份量 ${formatWeight(totalWeightG)} g${gramsEquiv}`;
+
+      // 更新下方詳細清單
+      totalCarbonEl.textContent = formattedTotal;
+      resultTitleEl.textContent = `目前偵測到的食材（共 ${validItems.length} 項）`;
+
+      foodListContainerEl.innerHTML = `<ul class="food-list">${validItems.map(item => `
+            <li class="food-item">
+              <div class="food-item-main">
+                <span class="food-item-name">${escapeHtml(item.name)}</span>
+                <span class="food-item-meta">圖卡 #${item.markerId} · ${escapeHtml(item.foodId)} · 份量 ${formatWeight(item.weight_g)} g</span>
+              </div>
+              <span class="food-item-carbon">${formatCarbon(item.carbon_mg)} mg CO₂e</span>
+            </li>
+          `).join('')}</ul>`;
+    }
+
+    // 啟動流程：先載入資料再開啟相機
+    async function init() {
+      await loadFoodDatabase();
+      await startCamera();
+    }
+
+    init();
+  </script>
+</body>
+
+</html>

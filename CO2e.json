@@ -1,0 +1,92 @@
+{
+  "1": {
+    "foodId": "FM001",
+    "name": "米(後壁仕安-主婦聯盟)",
+    "weight_g": 15,
+    "carbon_mg": 616.35
+  },
+  "2": {
+    "foodId": "FM002",
+    "name": "米(西螺-三好米)",
+    "weight_g": 15,
+    "carbon_mg": 267.24
+  },
+  "3": {
+    "foodId": "FM003",
+    "name": "牛蒡香鬆(將軍農會)",
+    "weight_g": 0.5,
+    "carbon_mg": 12.327
+  },
+  "4": {
+    "foodId": "FM004",
+    "name": "牛蒡香鬆(台南農會)",
+    "weight_g": 0.5,
+    "carbon_mg": 14.3815
+  },
+  "5": {
+    "foodId": "FM005",
+    "name": "鮪魚罐頭",
+    "weight_g": 1,
+    "carbon_mg": 70.5056
+  },
+  "6": {
+    "foodId": "FM006",
+    "name": "玉米罐頭",
+    "weight_g": 1,
+    "carbon_mg": 239.0234
+  },
+  "7": {
+    "foodId": "FM007",
+    "name": "鮭魚鬆",
+    "weight_g": 0.5,
+    "carbon_mg": 39.135
+  },
+  "8": {
+    "foodId": "FM008",
+    "name": "肉鬆(新東陽)",
+    "weight_g": 0.5,
+    "carbon_mg": 8.218
+  },
+  "9": {
+    "foodId": "FM009",
+    "name": "雞肉丁",
+    "weight_g": 2,
+    "carbon_mg": 12.838
+  },
+  "10": {
+    "foodId": "FM010",
+    "name": "毛豆(新市)",
+    "weight_g": 1,
+    "carbon_mg": 2.751
+  },
+  "11": {
+    "foodId": "FM011",
+    "name": "毛豆(高雄)",
+    "weight_g": 1,
+    "carbon_mg": 28.763
+  },
+  "12": {
+    "foodId": "FM012",
+    "name": "炒蛋(卜蜂)",
+    "weight_g": 1,
+    "carbon_mg": 6.419
+  },
+  "13": {
+    "foodId": "FM013",
+    "name": "滷蛋(東菜市場)",
+    "weight_g": 1,
+    "carbon_mg": 10.566
+  },
+  "14": {
+    "foodId": "FM014",
+    "name": "海苔(日本)",
+    "weight_g": 0.01,
+    "carbon_mg": 25.82001
+  },
+  "15": {
+    "foodId": "FM015",
+    "name": "海苔(韓國)",
+    "weight_g": 0.01,
+    "carbon_mg": 0.76983
+  }
+}
