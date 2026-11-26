@@ -353,6 +353,163 @@
       font-size: 0.8rem;
       color: #64748b;
     }
+
+    /* 調整辨識與效能參數：預設收合的三角形下拉選單 */
+    .settings-panel {
+      margin-top: 14px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      text-align: left;
+      overflow: hidden;
+    }
+
+    .settings-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 16px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #14532d;
+      list-style: none;
+      user-select: none;
+    }
+
+    .settings-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .settings-triangle {
+      display: inline-block;
+      font-size: 0.82rem;
+      color: #15803d;
+      transition: transform 0.2s ease;
+    }
+
+    .settings-panel[open] .settings-triangle {
+      transform: rotate(90deg);
+    }
+
+    .settings-body {
+      padding: 4px 16px 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .param-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .param-item {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .param-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .param-name {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .param-value {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+      font-size: 0.8rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .param-value.is-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .param-slider {
+      width: 100%;
+      margin: 4px 0 6px;
+      accent-color: #15803d;
+      cursor: pointer;
+    }
+
+    .param-desc {
+      margin: 0;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: #475569;
+    }
+
+    .settings-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-apply,
+    .btn-reset {
+      flex: 1 1 130px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-apply {
+      border: 0;
+      background: #15803d;
+      color: #ffffff;
+    }
+
+    .btn-apply:active {
+      transform: scale(0.98);
+    }
+
+    .btn-reset {
+      border: 1px solid #cbd5e1;
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .btn-reset:active {
+      transform: scale(0.98);
+    }
+
+    .settings-notice {
+      margin: 10px 0 0;
+      font-size: 0.8rem;
+      min-height: 1.2em;
+      color: #64748b;
+    }
+
+    .settings-notice.is-pending {
+      color: #b45309;
+      font-weight: 600;
+    }
+
+    .settings-notice.is-applied {
+      color: #15803d;
+      font-weight: 600;
+    }
   </style>
   <!-- 載入自託管 js-aruco2 核心函式庫 -->
   <script src="./lib/cv.js"></script>
@@ -409,6 +566,77 @@
       </div>
     </div>
 
+    <!-- 調整辨識與效能參數（預設收合的三角形下拉選單） -->
+    <details class="settings-panel" id="settingsPanel">
+      <summary class="settings-summary">
+        <span class="settings-triangle" aria-hidden="true">▶</span>
+        <span>調整辨識與效能參數</span>
+      </summary>
+      <div class="settings-body">
+        <div class="param-list">
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">MAX_HAMMING_DISTANCE</span>
+              <span class="param-value" id="valMaxHamming">5</span>
+            </div>
+            <input class="param-slider" type="range" id="sliderMaxHamming" min="0" max="5" step="1" value="5">
+            <p class="param-desc">ArUco 位元容錯數（<code>ARUCO_MIP_36h12</code> 安全上限為 5；若背景雜訊偏多可調降為 3～4）</p>
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">PROC_WIDTH</span>
+              <span class="param-value" id="valProcWidth">520 px</span>
+            </div>
+            <input class="param-slider" type="range" id="sliderProcWidth" min="320" max="960" step="20" value="520">
+            <p class="param-desc">離屏辨識處理寬度（px）；數值越小越省手機效能，越大越利於遠距小圖卡</p>
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">DETECT_INTERVAL_MS</span>
+              <span class="param-value" id="valDetectInterval">80 ms</span>
+            </div>
+            <input class="param-slider" type="range" id="sliderDetectInterval" min="30" max="300" step="10" value="80">
+            <p class="param-desc">離屏偵測最小間隔（毫秒，預設約 12.5 fps；主畫面繪製不受限）</p>
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">STATIC_HOLD_MS</span>
+              <span class="param-value" id="valStaticHold">450 ms</span>
+            </div>
+            <input class="param-slider" type="range" id="sliderStaticHold" min="0" max="1500" step="50" value="450">
+            <p class="param-desc">鏡頭靜止時單張圖卡的防閃爍保留時間（毫秒）</p>
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">GLOBAL_MOTION_THRESHOLD</span>
+              <span class="param-value" id="valGlobalMotion">12</span>
+            </div>
+            <input class="param-slider" type="range" id="sliderGlobalMotion" min="2" max="60" step="1" value="12">
+            <p class="param-desc">判定鏡頭移動中的全畫面平均亮度變化門檻（0～255）</p>
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">LOCAL_PATCH_THRESHOLD</span>
+              <span class="param-value" id="valLocalPatch">18</span>
+            </div>
+            <input class="param-slider" type="range" id="sliderLocalPatch" min="4" max="80" step="1" value="18">
+            <p class="param-desc">判定圖卡已離開原位置的局部區域亮度變化門檻（0～255）</p>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button class="btn-apply" id="btnApplyParams" type="button">確認調整</button>
+          <button class="btn-reset" id="btnResetParams" type="button">回復預設值</button>
+        </div>
+        <p class="settings-notice" id="settingsNotice" aria-live="polite"></p>
+      </div>
+    </details>
+
     <div class="status-bar" id="dataStatus">正在載入食材碳足跡資料...</div>
   </div>
 
@@ -456,14 +684,17 @@
 
     let foodDatabase = { ...FALLBACK_FOOD_DATABASE };
 
-    // 偵測與防閃爍參數（針對 iOS Safari 效能優化）
+    // 偵測與防閃爍參數（針對 iOS Safari 效能優化，支援透過下方選單確認調整或回復預設值）
     const DICTIONARY_NAME = 'ARUCO_MIP_36h12';
-    const MAX_HAMMING_DISTANCE = 5;
-    const PROC_WIDTH = 520;           // 離屏辨識寬度（大幅降低手機 CPU 負擔，避免 Safari 卡死）
-    const DETECT_INTERVAL_MS = 80;    // 偵測限頻（約 12.5 fps），畫面繪製仍維持滿幀率
-    const STATIC_HOLD_MS = 450;       // 鏡頭靜止時的單卡保留時間
-    const GLOBAL_MOTION_THRESHOLD = 12;
-    const LOCAL_PATCH_THRESHOLD = 18;
+    const DEFAULT_CONFIG = {
+      MAX_HAMMING_DISTANCE: 5,
+      PROC_WIDTH: 520,           // 離屏辨識寬度（大幅降低手機 CPU 負擔，避免 Safari 卡死）
+      DETECT_INTERVAL_MS: 80,    // 偵測限頻（約 12.5 fps），畫面繪製仍維持滿幀率
+      STATIC_HOLD_MS: 450,       // 鏡頭靜止時的單卡保留時間
+      GLOBAL_MOTION_THRESHOLD: 12,
+      LOCAL_PATCH_THRESHOLD: 18
+    };
+    const config = { ...DEFAULT_CONFIG };
     const SMALL_W = 64;
     const SMALL_H = 48;
 
@@ -515,7 +746,7 @@
     function createDetector() {
       detector = new AR.Detector({
         dictionaryName: DICTIONARY_NAME,
-        maxHammingDistance: MAX_HAMMING_DISTANCE
+        maxHammingDistance: config.MAX_HAMMING_DISTANCE
       });
     }
 
@@ -612,7 +843,7 @@
       const pass = DETECT_PASSES[passIdx];
       passIdx = (passIdx + 1) % DETECT_PASSES.length;
 
-      const w = Math.min(PROC_WIDTH, vw);
+      const w = Math.min(config.PROC_WIDTH, vw);
       const h = Math.max(1, Math.round((w * vh) / vw));
       const { ctx: pctx } = getProcCanvas(w, h);
       pctx.drawImage(video, 0, 0, w, h);
@@ -749,8 +980,8 @@
 
       for (const [id, entry] of trackedMarkers.entries()) {
         if (found.has(id)) continue;
-        const expired = now - entry.lastSeen > STATIC_HOLD_MS;
-        const patchChanged = calcPatchDiff(smallGrey, entry.ref) > LOCAL_PATCH_THRESHOLD;
+        const expired = now - entry.lastSeen > config.STATIC_HOLD_MS;
+        const patchChanged = calcPatchDiff(smallGrey, entry.ref) > config.LOCAL_PATCH_THRESHOLD;
         // 鏡頭移動、圖卡原位置影像改變或超過靜止保留時間 -> 立即移除，避免 01->02 殘影相加
         if (isMoving || expired || patchChanged) {
           trackedMarkers.delete(id);
@@ -874,10 +1105,10 @@
         const now = performance.now();
 
         // 偵測限頻：每 DETECT_INTERVAL_MS 執行一次離屏辨識與移動偵測
-        if (now - lastDetectAt >= DETECT_INTERVAL_MS) {
+        if (now - lastDetectAt >= config.DETECT_INTERVAL_MS) {
           lastDetectAt = now;
           const smallGrey = grabSmallGrey();
-          const isMoving = calcGlobalMotion(smallGrey) > GLOBAL_MOTION_THRESHOLD;
+          const isMoving = calcGlobalMotion(smallGrey) > config.GLOBAL_MOTION_THRESHOLD;
           prevSmallGrey = smallGrey;
 
           const found = detectOnce(vw, vh);
@@ -1008,6 +1239,83 @@
         lastStatusText = '';
         startOverlayEl.classList.remove('is-hidden');
       }
+    });
+
+    // 9. 辨識與效能參數調整面板（拖動 slider 僅預覽，點擊「確認調整」才生效）
+    const PARAM_CONTROLS = [
+      { key: 'MAX_HAMMING_DISTANCE', sliderId: 'sliderMaxHamming', valId: 'valMaxHamming', unit: '' },
+      { key: 'PROC_WIDTH', sliderId: 'sliderProcWidth', valId: 'valProcWidth', unit: ' px' },
+      { key: 'DETECT_INTERVAL_MS', sliderId: 'sliderDetectInterval', valId: 'valDetectInterval', unit: ' ms' },
+      { key: 'STATIC_HOLD_MS', sliderId: 'sliderStaticHold', valId: 'valStaticHold', unit: ' ms' },
+      { key: 'GLOBAL_MOTION_THRESHOLD', sliderId: 'sliderGlobalMotion', valId: 'valGlobalMotion', unit: '' },
+      { key: 'LOCAL_PATCH_THRESHOLD', sliderId: 'sliderLocalPatch', valId: 'valLocalPatch', unit: '' }
+    ];
+
+    const btnApplyParamsEl = document.getElementById('btnApplyParams');
+    const btnResetParamsEl = document.getElementById('btnResetParams');
+    const settingsNoticeEl = document.getElementById('settingsNotice');
+
+    function setSettingsNotice(text, stateClass = '') {
+      settingsNoticeEl.textContent = text;
+      settingsNoticeEl.className = stateClass ? `settings-notice ${stateClass}` : 'settings-notice';
+    }
+
+    function refreshParamPreviews() {
+      let hasPending = false;
+      for (const item of PARAM_CONTROLS) {
+        const sliderEl = document.getElementById(item.sliderId);
+        const valEl = document.getElementById(item.valId);
+        const draftVal = Number(sliderEl.value);
+        valEl.textContent = `${draftVal}${item.unit}`;
+        const changed = draftVal !== config[item.key];
+        valEl.classList.toggle('is-pending', changed);
+        if (changed) hasPending = true;
+      }
+      if (hasPending) {
+        setSettingsNotice('尚有未套用的調整，請點擊「確認調整」以生效。', 'is-pending');
+      } else {
+        setSettingsNotice('');
+      }
+    }
+
+    function applyConfigValues(nextValues, noticeText) {
+      const hammingChanged = nextValues.MAX_HAMMING_DISTANCE !== config.MAX_HAMMING_DISTANCE;
+      const procWidthChanged = nextValues.PROC_WIDTH !== config.PROC_WIDTH;
+
+      Object.assign(config, nextValues);
+
+      if (procWidthChanged) {
+        resetProcCache();
+      }
+      if ((hammingChanged || procWidthChanged) && detector) {
+        createDetector();
+      }
+
+      for (const item of PARAM_CONTROLS) {
+        const sliderEl = document.getElementById(item.sliderId);
+        const valEl = document.getElementById(item.valId);
+        sliderEl.value = String(config[item.key]);
+        valEl.textContent = `${config[item.key]}${item.unit}`;
+        valEl.classList.remove('is-pending');
+      }
+      setSettingsNotice(noticeText, 'is-applied');
+    }
+
+    for (const item of PARAM_CONTROLS) {
+      const sliderEl = document.getElementById(item.sliderId);
+      sliderEl.addEventListener('input', refreshParamPreviews);
+    }
+
+    btnApplyParamsEl.addEventListener('click', () => {
+      const nextValues = {};
+      for (const item of PARAM_CONTROLS) {
+        nextValues[item.key] = Number(document.getElementById(item.sliderId).value);
+      }
+      applyConfigValues(nextValues, '已套用新參數設定。');
+    });
+
+    btnResetParamsEl.addEventListener('click', () => {
+      applyConfigValues({ ...DEFAULT_CONFIG }, '已回復並套用預設參數。');
     });
 
     // 啟動初始化：先載入食材資料，並檢查是否找到核心函式庫
